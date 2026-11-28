@@ -1,6 +1,8 @@
 
 pipeline {
-    agent any
+    agent {
+        label 'predict'
+    }
 
     environment {
         APP_NAME = 'fraud-detection-ml-project'
