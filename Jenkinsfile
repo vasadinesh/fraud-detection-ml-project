@@ -6,6 +6,7 @@ pipeline {
 
     environment {
         APP_NAME = 'fraud-detection-ml-project'
+        PYTHONPATH = "${WORKSPACE}"
     }
 
     stages {
@@ -19,18 +20,28 @@ pipeline {
 
         stage('Python Version') {
             steps {
-                sh 'python3 --version'
-                sh 'pip3 --version'
+                sh '''
+                    python3 --version
+                    python3 -m pip --version
+                '''
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh '''
+                    set -e
+
                     python3 -m venv venv
                     . venv/bin/activate
-                    pip install --upgrade pip
+
+                    python -m pip install --upgrade pip
                     pip install -r requirements.txt
+
+                    # Install backend-specific dependencies if required
+                    if [ -f backend/requirements.txt ]; then
+                        pip install -r backend/requirements.txt
+                    fi
                 '''
             }
         }
@@ -38,9 +49,20 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh '''
+                    set -e
+
                     . venv/bin/activate
+
+                    export PYTHONPATH="$WORKSPACE:$PYTHONPATH"
+
+                    echo "Checking backend import..."
+
+                    python -c "import backend; print('Backend imported successfully')"
+
+                    echo "Running unit tests..."
+
                     if [ -d tests ]; then
-                        pytest tests/ -v
+                        python -m pytest tests/ -v
                     else
                         echo "No tests directory found. Skipping tests."
                     fi
@@ -51,8 +73,14 @@ pipeline {
         stage('Build Check') {
             steps {
                 sh '''
+                    set -e
+
                     . venv/bin/activate
-                    python3 -m compileall -q .
+
+                    export PYTHONPATH="$WORKSPACE:$PYTHONPATH"
+
+                    python3 -m compileall -q backend
+
                     echo "Python build check successful"
                 '''
             }
@@ -63,6 +91,7 @@ pipeline {
         success {
             echo 'Fraud Detection ML Pipeline SUCCESS!'
         }
+
         failure {
             echo 'Fraud Detection ML Pipeline FAILED!'
         }
