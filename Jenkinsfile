@@ -71,20 +71,26 @@ pipeline {
         }
 
         stage('Build Check') {
-            steps {
-                sh '''
-                    set -e
+    steps {
+        sh '''
+            set -e
 
-                    . venv/bin/activate
+            . venv/bin/activate
 
-                    export PYTHONPATH="$WORKSPACE:$PYTHONPATH"
+            echo "Checking Python syntax..."
 
-                    python3 -m compileall -q backend
+            python - <<'PY'
+import ast
+from pathlib import Path
 
-                    echo "Python build check successful"
-                '''
-            }
-        }
+for path in Path("backend").rglob("*.py"):
+    ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+print("Python build check successful")
+PY
+        '''
+    }
+}
     }
 
     post {
